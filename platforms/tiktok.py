@@ -86,11 +86,15 @@ class TikTokPublisher(BasePublisher):
             resp.raise_for_status()
             data = resp.json()
 
-            if "data" not in data:
+            # TikTok v2 returns tokens at the top level, older API used a "data" wrapper
+            if "access_token" in data:
+                token_data = data
+            elif "data" in data and isinstance(data["data"], dict):
+                token_data = data["data"]
+            else:
                 logger.error("TikTok token exchange failed: %s", data)
                 return False
 
-            token_data = data["data"]
             access_token = token_data.get("access_token")
             open_id = token_data.get("open_id", "")
             refresh_token = token_data.get("refresh_token", "")
