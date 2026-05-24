@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechVoice — ربط TikTok</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f0f1a;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: #1e1e2e;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            border: 1px solid #333;
+        }
+        .icon { font-size: 60px; margin-bottom: 16px; }
+        h1 { font-size: 24px; margin-bottom: 8px; color: #fff; }
+        .sub { color: #aaa; font-size: 15px; margin-bottom: 28px; }
+        .url-box {
+            background: #0d0d1a;
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 14px 16px;
+            font-family: monospace;
+            font-size: 13px;
+            color: #7af;
+            word-break: break-all;
+            text-align: left;
+            direction: ltr;
+            margin-bottom: 16px;
+        }
+        .copy-btn {
+            background: #ff2d55;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 14px 32px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 12px;
+            transition: background 0.2s;
+        }
+        .copy-btn:hover { background: #e0253f; }
+        .copy-btn.copied { background: #00CC66; }
+        .step {
+            background: #252535;
+            border-radius: 10px;
+            padding: 14px 16px;
+            text-align: right;
+            color: #ccc;
+            font-size: 14px;
+            margin-top: 20px;
+            line-height: 2;
+        }
+        .step strong { color: #fff; }
+        .error-box {
+            background: #2a1a1a;
+            border: 1px solid #ff4444;
+            border-radius: 10px;
+            padding: 16px;
+            color: #ff6666;
+            font-size: 14px;
+            margin-top: 12px;
+        }
+    </style>
+</head>
+<body>
+<div class="card" id="main">
+    <div class="icon">🎵</div>
+    <h1 id="title">جارٍ التحقق…</h1>
+    <p class="sub" id="sub"></p>
+    <div id="content"></div>
+</div>
+
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const code  = params.get('code');
+    const error = params.get('error');
+    const fullUrl = window.location.href;
+
+    const title   = document.getElementById('title');
+    const sub     = document.getElementById('sub');
+    const content = document.getElementById('content');
+
+    if (error) {
+        title.textContent = '❌ فشل الربط';
+        sub.textContent   = 'رفض TikTok الصلاحية.';
+        content.innerHTML = `<div class="error-box">خطأ: ${error}<br>${params.get('error_description') || ''}</div>`;
+    } else if (code) {
+        title.textContent = '✅ تم التفويض بنجاح!';
+        sub.textContent   = 'انسخ الرابط أدناه والصقه في تطبيق TechVoice Publisher';
+        content.innerHTML = `
+            <div class="url-box" id="urlBox">${fullUrl}</div>
+            <button class="copy-btn" id="copyBtn" onclick="copyUrl()">📋 انسخ الرابط</button>
+            <div class="step">
+                <strong>الخطوات:</strong><br>
+                1. اضغط "انسخ الرابط" أعلاه<br>
+                2. ارجع لتطبيق TechVoice على <strong>localhost:8501</strong><br>
+                3. الصق الرابط في خانة <strong>"رابط إعادة التوجيه"</strong><br>
+                4. اضغط <strong>"اكتمل الربط"</strong>
+            </div>`;
+    } else {
+        title.textContent = 'صفحة الربط';
+        sub.textContent   = 'هذه الصفحة تستقبل بيانات تفويض TikTok.';
+        content.innerHTML = `<div class="step">استخدم هذه الصفحة فقط عبر رابط التفويض من التطبيق.</div>`;
+    }
+
+    function copyUrl() {
+        navigator.clipboard.writeText(fullUrl).then(() => {
+            const btn = document.getElementById('copyBtn');
+            btn.textContent = '✅ تم النسخ!';
+            btn.classList.add('copied');
+            setTimeout(() => {
+                btn.textContent = '📋 انسخ الرابط';
+                btn.classList.remove('copied');
+            }, 2000);
+        });
+    }
+</script>
+</body>
+</html>

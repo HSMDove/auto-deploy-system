@@ -25,7 +25,7 @@ TIKTOK_VIDEO_INIT_URL = "https://open.tiktokapis.com/v2/post/publish/video/init/
 TIKTOK_PUBLISH_STATUS_URL = "https://open.tiktokapis.com/v2/post/publish/status/fetch/"
 TIKTOK_USER_INFO_URL = "https://open.tiktokapis.com/v2/user/info/"
 
-REDIRECT_URI = "http://localhost:8501/callback/tiktok"
+REDIRECT_URI = "https://hsmdove.github.io/auto-deploy-system/callback/tiktok"
 SCOPES = "video.publish,user.info.basic"
 
 
