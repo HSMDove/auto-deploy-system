@@ -26,14 +26,12 @@ PLATFORMS = {
             '• <strong>App name ★</strong>: <code>TechVoice Publisher</code><br>'
             '• <strong>Category ★</strong>: اختر <strong>Utilities</strong> من القائمة<br>'
             '• <strong>Description ★</strong>: <code>Internal tool for publishing videos to TikTok</code><br>'
-            '• <strong>Terms of Service URL ★</strong>: استخدم رابط GitHub Gist أو repo المشروع مثل:<br>'
-            '  <code>https://github.com/YOUR_USERNAME/techvoice-publisher</code><br>'
+            '• <strong>Terms of Service URL ★</strong>: <code>https://github.com/HSMDove/auto-deploy-system</code><br>'
             '  <span style="color:#f90;">⚠️ لا تستخدم example.com — TikTok يرفضه لأنه غير حقيقي</span><br>'
-            '• <strong>Privacy Policy URL ★</strong>: نفس الرابط أو رابط GitHub آخر<br>'
+            '• <strong>Privacy Policy URL ★</strong>: <code>https://github.com/HSMDove/auto-deploy-system</code><br>'
             '• <strong>Platforms ★</strong>: ضع ✔ على <strong>Desktop</strong><br>'
             '• <strong>Web/Desktop URL ★</strong> (يظهر تلقائياً عند اختيار Desktop):<br>'
-            '  هذا رابط موقع التطبيق الرسمي — استخدم رابط GitHub repo المشروع:<br>'
-            '  <code>https://github.com/YOUR_USERNAME/techvoice-publisher</code>',
+            '  <code>https://github.com/HSMDove/auto-deploy-system</code>',
 
             '<strong>خطوة 2 — أضف Login Kit أولاً (مطلوب قبل Content Posting API):</strong><br>'
             'اضغط <strong>+ Add products</strong> ← اختر <strong>Login Kit</strong> ← اضغط <strong>+ Add</strong><br>'
@@ -482,7 +480,11 @@ def _oauth_connect_ui(platform: str, info: dict):
             st.warning("أدخل اسماً للحساب أولاً.")
         else:
             try:
-                url = publisher.get_auth_url()
+                if platform == "tiktok":
+                    url, code_verifier = publisher.get_auth_url()
+                    st.session_state[f"pkce_verifier_{platform}"] = code_verifier
+                else:
+                    url = publisher.get_auth_url()
                 if url:
                     st.session_state[f"auth_url_{platform}"] = url
                     st.session_state[f"auth_name_{platform}"] = account_name.strip()
@@ -514,7 +516,10 @@ def _oauth_connect_ui(platform: str, info: dict):
                 saved_name = st.session_state.get(f"auth_name_{platform}", account_name)
                 with st.spinner(f"جارٍ ربط حساب {info['label']}…"):
                     try:
-                        if platform == "x" and state:
+                        if platform == "tiktok":
+                            code_verifier = st.session_state.get(f"pkce_verifier_{platform}", "")
+                            success = publisher.handle_callback(code, saved_name, code_verifier=code_verifier)
+                        elif platform == "x" and state:
                             success = publisher.handle_callback(code, saved_name, state=state)
                         else:
                             success = publisher.handle_callback(code, saved_name)

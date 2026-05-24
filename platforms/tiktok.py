@@ -7,7 +7,9 @@ import time
 import logging
 import urllib.parse
 import secrets
-from typing import Optional, List, Dict, Any
+import hashlib
+import base64
+from typing import Optional, List, Dict, Any, Tuple
 
 import requests
 
@@ -27,6 +29,15 @@ REDIRECT_URI = "http://localhost:8501/callback/tiktok"
 SCOPES = "video.publish,user.info.basic"
 
 
+def _generate_pkce() -> Tuple[str, str]:
+    """Generate PKCE code_verifier and code_challenge (S256)."""
+    code_verifier = secrets.token_urlsafe(43)
+    code_challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(code_verifier.encode()).digest()
+    ).rstrip(b"=").decode()
+    return code_verifier, code_challenge
+
+
 class TikTokPublisher(BasePublisher):
     def __init__(self, client_id: str, client_secret: str):
         self.client_id = client_id
@@ -34,30 +45,39 @@ class TikTokPublisher(BasePublisher):
 
     # ── OAuth ────────────────────────────────────────────────────────────────
 
-    def get_auth_url(self) -> str:
-        """Build the TikTok OAuth authorization URL."""
+    def get_auth_url(self) -> Tuple[str, str]:
+        """Build the TikTok OAuth authorization URL with PKCE.
+        Returns (auth_url, code_verifier) — store code_verifier for token exchange.
+        """
         state = secrets.token_urlsafe(16)
+        code_verifier, code_challenge = _generate_pkce()
         params = {
             "client_key": self.client_id,
             "scope": SCOPES,
             "response_type": "code",
             "redirect_uri": REDIRECT_URI,
             "state": state,
+            "code_challenge": code_challenge,
+            "code_challenge_method": "S256",
         }
         url = TIKTOK_AUTH_BASE + "?" + urllib.parse.urlencode(params)
-        logger.info("TikTok auth URL generated")
-        return url
+        logger.info("TikTok auth URL generated (PKCE)")
+        return url, code_verifier
 
-    def handle_callback(self, code: str, account_name: str) -> bool:
+    def handle_callback(self, code: str, account_name: str, code_verifier: str = "") -> bool:
         """Exchange authorization code for access/refresh tokens."""
         try:
-            resp = requests.post(TIKTOK_TOKEN_URL, data={
+            payload = {
                 "client_key": self.client_id,
                 "client_secret": self.client_secret,
                 "code": code,
                 "grant_type": "authorization_code",
                 "redirect_uri": REDIRECT_URI,
-            }, timeout=30)
+            }
+            if code_verifier:
+                payload["code_verifier"] = code_verifier
+
+            resp = requests.post(TIKTOK_TOKEN_URL, data=payload, timeout=30)
             resp.raise_for_status()
             data = resp.json()
 
