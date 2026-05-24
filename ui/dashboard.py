@@ -205,9 +205,16 @@ def _render_list_card(task: Dict):
         with ca:
             if status in ("pending", "scheduled", "failed"):
                 if st.button("▶️ نشر الآن", key=f"now_{task['id']}", use_container_width=True):
-                    with st.spinner("جارٍ النشر…"):
+                    with st.spinner("جارٍ النشر… قد يستغرق دقيقة"):
                         run_task_now(task["id"])
+                    st.session_state[f"_publish_result_{task['id']}"] = True
                     st.rerun()
+
+        # عرض نتيجة النشر بعد العملية
+        result_key = f"_publish_result_{task['id']}"
+        if st.session_state.get(result_key):
+            _show_publish_result(task["id"])
+            del st.session_state[result_key]
 
         with cb:
             if status in ("pending", "failed"):
@@ -322,6 +329,61 @@ def _render_kanban_card(task: Dict, accent: str):
                          use_container_width=True):
                 delete_task(task["id"])
                 st.rerun()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# نتيجة النشر — رسالة تفصيلية
+# ══════════════════════════════════════════════════════════════════════════════
+
+PLATFORM_LABELS_AR = {
+    "tiktok":    "TikTok 🎵",
+    "youtube":   "YouTube ▶️",
+    "instagram": "Instagram 📸",
+    "x":         "X ✖️",
+}
+
+
+def _show_publish_result(task_id: str):
+    """عرض نتيجة النشر التفصيلية لكل منصة/حساب بعد المحاولة."""
+    from core.database import get_post_history, get_task, get_accounts
+
+    history = get_post_history(task_id=task_id, limit=10)
+    if not history:
+        st.warning("⚠️ لم تُنفَّذ أي محاولة نشر — تحقق من إعدادات المهمة.")
+        return
+
+    task = get_task(task_id) or {}
+    status = task.get("status", "")
+
+    successes = [h for h in history if h.get("status") == "success"]
+    failures  = [h for h in history if h.get("status") != "success"]
+
+    # نجاحات
+    if successes:
+        for h in successes:
+            plat = h.get("platform", "")
+            plat_label = PLATFORM_LABELS_AR.get(plat, plat.upper())
+            # ابحث عن اسم الحساب
+            accounts = get_accounts(plat)
+            acc_name = accounts[0].get("display_name") if accounts else ""
+            who = f" — @{acc_name}" if acc_name else ""
+            st.success(
+                f"✅ تم النشر على **{plat_label}**{who} — "
+                f"سيظهر على حسابك خلال دقائق."
+            )
+
+    # إخفاقات
+    if failures:
+        for h in failures:
+            plat = h.get("platform", "")
+            plat_label = PLATFORM_LABELS_AR.get(plat, plat.upper())
+            err = h.get("error_msg") or "خطأ غير معروف"
+            st.error(f"❌ فشل النشر على **{plat_label}**: {err[:200]}")
+
+    # حالة إجمالية واضحة
+    if status == "failed" and not failures:
+        # لم تُحاول النشر إطلاقاً (لا منصات / لا حسابات)
+        st.error(f"❌ {task.get('error_msg') or 'لم يتم تنفيذ النشر'}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════

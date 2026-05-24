@@ -71,24 +71,33 @@ def _run_task(task: dict):
             cover_path = path
             tmp_files.append(path)
 
+    # Default platforms to TikTok if none specified (for users without a platforms column)
+    if not platforms:
+        platforms = ["tiktok"]
+        logger.info("Task %s has no platforms — defaulting to TikTok", task_id)
+
     # Publish to each platform
+    attempted = False
     any_success = False
-    all_failed = True
     errors = []
+    skipped = []  # platforms skipped (not configured or no accounts)
 
     for platform in platforms:
         publisher = _get_publisher(platform)
         if publisher is None:
+            skipped.append(f"{platform} (بيانات API ناقصة)")
             logger.info("Platform %s not configured, skipping", platform)
             continue
 
         accounts = publisher.get_connected_accounts()
         if not accounts:
+            skipped.append(f"{platform} (لا يوجد حساب مربوط)")
             logger.info("No accounts for %s, skipping", platform)
             continue
 
         for account in accounts:
             account_id = account.get("id", "")
+            attempted = True
             try:
                 if content_type == "video" and video_path:
                     result = publisher.publish_video(video_path, cover_path, caption, account_id)
@@ -109,7 +118,6 @@ def _run_task(task: dict):
 
                 if result.success:
                     any_success = True
-                    all_failed = False
                 else:
                     errors.append(f"{platform}: {result.error_msg}")
 
@@ -122,21 +130,29 @@ def _run_task(task: dict):
     for f in tmp_files:
         cleanup_tmp_file(f)
 
-    # Final status
-    if all_failed and errors:
-        final_status = "failed"
-        error_summary = "; ".join(errors[:3])
-        update_task_status(task_id, "failed", error_summary)
+    # Final status — be honest about what happened
+    if not attempted:
+        # Nothing was even tried — don't mark as "done"
+        reason = "لم يتم النشر: " + (", ".join(skipped) if skipped else "لا توجد منصات أو حسابات مربوطة")
+        update_task_status(task_id, "failed", reason)
         if notion_token:
             try:
                 nc.update_task_status(task_id, nc.STATUS_FAILED, notion_token)
             except Exception:
                 pass
-    else:
+    elif any_success:
         update_task_status(task_id, "done")
         if notion_token:
             try:
                 nc.update_task_status(task_id, nc.STATUS_DONE, notion_token)
+            except Exception:
+                pass
+    else:
+        error_summary = "; ".join(errors[:3]) if errors else "فشل النشر بدون رسالة خطأ"
+        update_task_status(task_id, "failed", error_summary)
+        if notion_token:
+            try:
+                nc.update_task_status(task_id, nc.STATUS_FAILED, notion_token)
             except Exception:
                 pass
 

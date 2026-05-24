@@ -26,7 +26,7 @@ TIKTOK_PUBLISH_STATUS_URL = "https://open.tiktokapis.com/v2/post/publish/status/
 TIKTOK_USER_INFO_URL = "https://open.tiktokapis.com/v2/user/info/"
 
 REDIRECT_URI = "https://hsmdove.github.io/auto-deploy-system/callback/tiktok"
-SCOPES = "user.info.basic"
+SCOPES = "video.publish,video.upload,user.info.basic"
 
 
 def _generate_pkce() -> Tuple[str, str]:
