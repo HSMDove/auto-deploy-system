@@ -77,7 +77,12 @@ class TikTokPublisher(BasePublisher):
             if code_verifier:
                 payload["code_verifier"] = code_verifier
 
-            resp = requests.post(TIKTOK_TOKEN_URL, data=payload, timeout=30)
+            resp = requests.post(
+                TIKTOK_TOKEN_URL,
+                data=payload,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                timeout=30,
+            )
             resp.raise_for_status()
             data = resp.json()
 
